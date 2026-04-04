@@ -1,35 +1,62 @@
 package com.sport.club.security;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
 
-    private final RedisTemplate<String, Object> redisTemplate;
-    private static final long REFRESH_TOKEN_EXPIRATION_DAYS = 7;
-    private static final String REDIS_KEY_PREFIX = "refresh_token:";
+    private final Map<String, TokenInfo> refreshTokenStorage = new ConcurrentHashMap<>();
+    private static final long REFRESH_TOKEN_EXPIRATION_HOURS = 168; // 7 дней
 
     public String createRefreshToken(String email) {
         String refreshToken = UUID.randomUUID().toString();
-        redisTemplate.opsForValue().set(
-                REDIS_KEY_PREFIX + refreshToken,
-                email,
-                Duration.ofDays(REFRESH_TOKEN_EXPIRATION_DAYS)
-        );
+        TokenInfo tokenInfo = new TokenInfo(email, LocalDateTime.now().plusHours(REFRESH_TOKEN_EXPIRATION_HOURS));
+        refreshTokenStorage.put(refreshToken, tokenInfo);
         return refreshToken;
     }
 
     public String getEmailByRefreshToken(String token) {
-        return (String) redisTemplate.opsForValue().get(REDIS_KEY_PREFIX + token);
+        TokenInfo tokenInfo = refreshTokenStorage.get(token);
+        if (tokenInfo == null) {
+            return null;
+        }
+
+        // Проверка на истечение срока действия
+        if (tokenInfo.getExpiresAt().isBefore(LocalDateTime.now())) {
+            refreshTokenStorage.remove(token);
+            return null;
+        }
+
+        return tokenInfo.getEmail();
     }
 
     public void deleteRefreshToken(String token) {
-        redisTemplate.delete(REDIS_KEY_PREFIX + token);
+        refreshTokenStorage.remove(token);
+    }
+
+    // Вспомогательный класс для хранения информации о токене
+    private static class TokenInfo {
+        private final String email;
+        private final LocalDateTime expiresAt;
+
+        public TokenInfo(String email, LocalDateTime expiresAt) {
+            this.email = email;
+            this.expiresAt = expiresAt;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public LocalDateTime getExpiresAt() {
+            return expiresAt;
+        }
     }
 }
