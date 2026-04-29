@@ -11,6 +11,10 @@ import java.util.UUID;
 @Repository
 public interface TrainingAttendanceRepository extends JpaRepository<TrainingAttendance, UUID> {
     List<TrainingAttendance> findByTrainingId(UUID trainingId);
+
+
+    List<TrainingAttendance> findByAthleteId(UUID athleteId);
+
     Optional<TrainingAttendance> findByTrainingIdAndAthleteId(UUID trainingId, UUID athleteId);
     long countByTrainingIdAndStatus(UUID trainingId, String status);
 }

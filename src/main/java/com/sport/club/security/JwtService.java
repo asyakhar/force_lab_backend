@@ -2,6 +2,7 @@
 package com.sport.club.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
@@ -19,12 +20,15 @@ import java.util.function.Function;
 public class JwtService {
 
     private static final String SECRET_KEY = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
-    private static final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 15; 
+    private static final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 15;
 
     public String extractEmail(String token) {
-        return extractClaim(token, Claims::getSubject);
+        try {
+            return extractClaim(token, Claims::getSubject);
+        } catch (Exception e) {
+            return null;
+        }
     }
-
     public String extractRole(String token) {
         return extractClaim(token, claims -> claims.get("role", String.class));
     }
@@ -41,8 +45,15 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, String userEmail) {
-        final String email = extractEmail(token);
-        return (email.equals(userEmail)) && !isTokenExpired(token);
+        try {
+            final String email = extractEmail(token);
+            return (email.equals(userEmail)) && !isTokenExpired(token);
+        } catch (ExpiredJwtException e) {
+            // Токен истек - возвращаем false вместо исключения
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private boolean isTokenExpired(String token) {
