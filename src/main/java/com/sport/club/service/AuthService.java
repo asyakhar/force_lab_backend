@@ -83,21 +83,31 @@ public class AuthService {
     }
 
     public AuthResponse refreshToken(RefreshTokenRequest request) {
+        System.out.println("🔄 Запрос на обновление токена: " + request.getRefreshToken());
+
         String userEmail = refreshTokenService.getEmailByRefreshToken(request.getRefreshToken());
+        System.out.println("📧 Найден email: " + userEmail);
 
         if (userEmail == null) {
-            throw new RuntimeException("Refresh token недействителен");
+            System.out.println("❌ Refresh token не найден или истек");
+            throw new RuntimeException("Refresh token недействителен или истек. Войдите заново.");
         }
 
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+        // Создаем НОВЫЙ refresh token
+        String newRefreshToken = refreshTokenService.createRefreshToken(userEmail);
+
+        // Удаляем старый
+        refreshTokenService.deleteRefreshToken(request.getRefreshToken());
 
         UserDetails userDetails = user;
         String accessToken = jwtService.generateAccessToken(userDetails);
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
-                .refreshToken(request.getRefreshToken())
+                .refreshToken(newRefreshToken)  // ← Возвращаем НОВЫЙ refresh token
                 .build();
     }
 

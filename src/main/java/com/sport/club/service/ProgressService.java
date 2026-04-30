@@ -105,9 +105,8 @@ public class ProgressService {
         // Считаем все тренировки, на которые был записан спортсмен
         long totalRegistered = attendances.size();
 
-        // Считаем тренировки, где статус "PRESENT" (присутствовал)
         long attended = attendances.stream()
-                .filter(a -> "PRESENT".equals(a.getStatus()) || "LATE".equals(a.getStatus()))
+                .filter(a -> "ATTENDED".equals(a.getStatus()) || "LATE".equals(a.getStatus()))
                 .count();
 
         if (totalRegistered == 0) {
@@ -128,7 +127,7 @@ public class ProgressService {
 
         // Получаем только посещенные тренировки
         Set<LocalDate> attendedDates = attendances.stream()
-                .filter(a -> "PRESENT".equals(a.getStatus()) || "LATE".equals(a.getStatus()))
+                .filter(a -> "ATTENDED".equals(a.getStatus()) || "LATE".equals(a.getStatus()))
                 .map(a -> {
                     // Получаем дату тренировки из Training
                     Optional<Training> training = trainingRepository.findById(a.getTrainingId());
@@ -178,7 +177,7 @@ public class ProgressService {
 
         // Получаем только посещенные тренировки, отсортированные по дате
         List<LocalDate> attendedDates = attendances.stream()
-                .filter(a -> "PRESENT".equals(a.getStatus()) || "LATE".equals(a.getStatus()))
+                .filter(a -> "ATTENDED".equals(a.getStatus()) || "LATE".equals(a.getStatus()))
                 .map(a -> {
                     Optional<Training> training = trainingRepository.findById(a.getTrainingId());
                     return training.map(t -> t.getTrainingDate().toLocalDate()).orElse(null);

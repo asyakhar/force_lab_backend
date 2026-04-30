@@ -55,11 +55,13 @@ public class TrainingController {
     public ResponseEntity<String> cancelRegistration(
             @PathVariable UUID trainingId,
             Authentication authentication) {
-        UUID athleteId = getUserId(authentication);
-        trainingService.cancelRegistration(trainingId, athleteId);
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+        trainingService.cancelRegistration(trainingId, user.getId());
         return ResponseEntity.ok("Регистрация отменена");
     }
-
 
     // Обновить тренировку
     @PutMapping("/{trainingId}")
@@ -133,10 +135,24 @@ public class TrainingController {
             }
 
             List<TrainingResponse> trainings = trainingService.getAthleteTrainings(athleteId);
-            System.out.println("🔍 Найдено тренировок: " + trainings.size()); // ЛОГ
+           // System.out.println("🔍 Найдено тренировок: " + trainings.size()); // ЛОГ
             return ResponseEntity.ok(trainings);
         } catch (Exception e) {
             System.err.println("❌ Ошибка: " + e.getMessage()); // ЛОГ
+            return ResponseEntity.status(400)
+                    .body(Map.of("message", e.getMessage()));
+        }
+    }
+    @PutMapping("/{trainingId}/attendance/{athleteId}")
+    public ResponseEntity<?> markAttendance(
+            @PathVariable UUID trainingId,
+            @PathVariable UUID athleteId,
+            @RequestBody Map<String, String> request) {
+        try {
+            String status = request.get("status"); // ATTENDED, ABSENT, LATE
+            trainingService.markAttendance(trainingId, athleteId, status);
+            return ResponseEntity.ok(Map.of("message", "Посещение отмечено"));
+        } catch (Exception e) {
             return ResponseEntity.status(400)
                     .body(Map.of("message", e.getMessage()));
         }

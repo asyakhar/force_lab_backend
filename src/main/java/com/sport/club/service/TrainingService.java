@@ -1,5 +1,6 @@
 package com.sport.club.service;
 
+import com.sport.club.controller.SseController;
 import com.sport.club.model.dto.request.CreateTrainingRequest;
 import com.sport.club.model.dto.response.TrainingResponse;
 import com.sport.club.model.entity.Athlete;
@@ -25,7 +26,8 @@ public class TrainingService {
     private final TrainingRepository trainingRepository;
     private final TrainingAttendanceRepository attendanceRepository;
     private final UserRepository userRepository;
-   private final AthleteRepository athleteRepository;
+    private final AthleteRepository athleteRepository;
+    private final SseController sseController;  // ← ДОБАВИТЬ
 
     @Transactional(readOnly = true)
     public List<TrainingResponse> getUpcomingTrainings() {
@@ -48,32 +50,54 @@ public class TrainingService {
         training.setMaxParticipants(request.getMaxParticipants());
 
         Training saved = trainingRepository.save(training);
+
+        // ← ДОБАВИТЬ: Уведомляем всех о новой тренировке
+        sseController.sendEventToAll("training-updated",
+                Map.of("message", "Создана новая тренировка: " + saved.getTitle()));
+
         return mapToResponse(saved);
     }
 
     @Transactional
     public void registerForTraining(UUID trainingId, UUID userId) {
-        // Находим спортсмена по userId
         Athlete athlete = athleteRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Профиль спортсмена не найден"));
 
-        UUID athleteId = athlete.getId(); // ← Получаем настоящий athleteId
+        UUID athleteId = athlete.getId();
 
-        if (attendanceRepository.findByTrainingIdAndAthleteId(trainingId, athleteId).isPresent()) {
-            throw new RuntimeException("Вы уже зарегистрированы на эту тренировку");
+        Optional<TrainingAttendance> existingAttendance = attendanceRepository
+                .findByTrainingIdAndAthleteId(trainingId, athleteId);
+
+        if (existingAttendance.isPresent()) {
+            TrainingAttendance attendance = existingAttendance.get();
+
+            if ("CANCELLED".equals(attendance.getStatus())) {
+                attendance.setStatus("REGISTERED");
+                attendance.setMarkedAt(LocalDateTime.now());
+                attendanceRepository.save(attendance);
+
+                // SSE уведомление
+                sseController.sendEventToAll("training-updated",
+                        Map.of("message", "Участник перезаписался"));
+                return;
+            } else {
+                throw new RuntimeException("Вы уже зарегистрированы на эту тренировку");
+            }
         }
 
         Training training = trainingRepository.findById(trainingId)
                 .orElseThrow(() -> new RuntimeException("Тренировка не найдена"));
 
         if (training.getMaxParticipants() != null) {
-            long currentParticipants = attendanceRepository.countByTrainingIdAndStatus(trainingId, "PRESENT");
+            long currentParticipants = attendanceRepository.findByTrainingId(training.getId())
+                    .stream()
+                    .filter(a -> !"CANCELLED".equals(a.getStatus()))
+                    .count();
             if (currentParticipants >= training.getMaxParticipants()) {
                 throw new RuntimeException("Нет свободных мест на тренировку");
             }
         }
 
-        // Привязываем спортсмена к тренеру
         if (training.getCoachId() != null) {
             athlete.setCoachId(training.getCoachId());
             athleteRepository.save(athlete);
@@ -82,20 +106,55 @@ public class TrainingService {
 
         TrainingAttendance attendance = new TrainingAttendance();
         attendance.setTrainingId(trainingId);
-        attendance.setAthleteId(athleteId); // ← Теперь правильный ID
-        attendance.setStatus("PRESENT");
+        attendance.setAthleteId(athleteId);
+        attendance.setStatus("REGISTERED");
         attendance.setMarkedAt(LocalDateTime.now());
 
         attendanceRepository.save(attendance);
+
+        // ← ДОБАВИТЬ: Уведомления
+        sseController.sendEventToAll("training-updated",
+                Map.of("message", "Обновление участников"));
+        sseController.sendEvent(training.getCoachId().toString(), "participant-added",
+                Map.of("trainingId", trainingId.toString(),
+                        "athleteName", athlete.getUser().getFullName()));
     }
 
     @Transactional
-    public void cancelRegistration(UUID trainingId, UUID athleteId) {
+    public void cancelRegistration(UUID trainingId, UUID userId) {
+        Athlete athlete = athleteRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Профиль спортсмена не найден"));
+
+        UUID athleteId = athlete.getId();
+
         TrainingAttendance attendance = attendanceRepository
                 .findByTrainingIdAndAthleteId(trainingId, athleteId)
                 .orElseThrow(() -> new RuntimeException("Вы не зарегистрированы на эту тренировку"));
 
-        attendanceRepository.delete(attendance);
+        attendance.setStatus("CANCELLED");
+        attendanceRepository.save(attendance);
+
+        // ← ДОБАВИТЬ: Уведомления
+        sseController.sendEventToAll("training-updated",
+                Map.of("message", "Участник отменил запись"));
+    }
+
+    @Transactional
+    public void markAttendance(UUID trainingId, UUID athleteId, String status) {
+        TrainingAttendance attendance = attendanceRepository
+                .findByTrainingIdAndAthleteId(trainingId, athleteId)
+                .orElseThrow(() -> new RuntimeException("Спортсмен не записан на эту тренировку"));
+
+        attendance.setStatus(status);
+        attendanceRepository.save(attendance);
+
+        System.out.println("✅ Посещение отмечено: athleteId=" + athleteId + ", status=" + status);
+
+        // ← ДОБАВИТЬ: Уведомления
+        sseController.sendEvent(athleteId.toString(), "attendance-marked",
+                Map.of("status", status, "message", "Ваше посещение отмечено как " + status));
+        sseController.sendEventToAll("training-updated",
+                Map.of("message", "Обновление статуса посещения"));
     }
 
     public UUID getUserIdByEmail(String email) {
@@ -103,10 +162,12 @@ public class TrainingService {
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
         return user.getId();
     }
+
     public List<TrainingResponse> getAthleteTrainings(UUID athleteId) {
         List<TrainingAttendance> attendances = attendanceRepository.findByAthleteId(athleteId);
 
         return attendances.stream()
+                .filter(a -> !"CANCELLED".equals(a.getStatus()))
                 .map(attendance -> {
                     Training training = trainingRepository.findById(attendance.getTrainingId())
                             .orElse(null);
@@ -117,6 +178,7 @@ public class TrainingService {
                 .sorted((t1, t2) -> t2.getTrainingDate().compareTo(t1.getTrainingDate()))
                 .collect(Collectors.toList());
     }
+
     @Transactional
     public TrainingResponse updateTraining(UUID trainingId, CreateTrainingRequest request, UUID coachId) {
         Training training = trainingRepository.findById(trainingId)
@@ -135,6 +197,11 @@ public class TrainingService {
         training.setMaxParticipants(request.getMaxParticipants());
 
         Training saved = trainingRepository.save(training);
+
+        // ← ДОБАВИТЬ
+        sseController.sendEventToAll("training-updated",
+                Map.of("message", "Тренировка обновлена: " + saved.getTitle()));
+
         return mapToResponse(saved);
     }
 
@@ -147,11 +214,13 @@ public class TrainingService {
             throw new RuntimeException("Вы не можете удалить эту тренировку");
         }
 
-        // Удаляем все записи о посещении
         List<TrainingAttendance> attendances = attendanceRepository.findByTrainingId(trainingId);
         attendanceRepository.deleteAll(attendances);
-
         trainingRepository.delete(training);
+
+        // ← ДОБАВИТЬ
+        sseController.sendEventToAll("training-updated",
+                Map.of("message", "Тренировка удалена"));
     }
 
     public TrainingResponse getTrainingDetails(UUID trainingId) {
@@ -161,14 +230,11 @@ public class TrainingService {
     }
 
     public List<Map<String, Object>> getParticipants(UUID trainingId) {
-        // Получаем все записи о регистрации на тренировку
         List<TrainingAttendance> attendances = attendanceRepository.findByTrainingId(trainingId);
-
         List<Map<String, Object>> participants = new ArrayList<>();
 
         for (TrainingAttendance attendance : attendances) {
-            // Пропускаем отмененные записи
-            if (!"PRESENT".equals(attendance.getStatus()) && !"LATE".equals(attendance.getStatus())) {
+            if ("CANCELLED".equals(attendance.getStatus())) {
                 continue;
             }
 
@@ -178,13 +244,10 @@ public class TrainingService {
             participant.put("registeredAt", attendance.getMarkedAt());
 
             try {
-                // Ищем спортсмена по athleteId
                 Optional<Athlete> athleteOpt = athleteRepository.findById(attendance.getAthleteId());
-
                 if (athleteOpt.isPresent()) {
                     Athlete athlete = athleteOpt.get();
                     User user = athlete.getUser();
-
                     participant.put("athleteId", athlete.getId());
                     participant.put("fullName", user.getFullName() != null ? user.getFullName() : "Без имени");
                     participant.put("email", user.getEmail() != null ? user.getEmail() : "Нет email");
@@ -209,9 +272,13 @@ public class TrainingService {
 
         return participants;
     }
+
     private TrainingResponse mapToResponse(Training training) {
         User coach = userRepository.findById(training.getCoachId()).orElse(null);
-        long participants = attendanceRepository.countByTrainingIdAndStatus(training.getId(), "PRESENT");
+        long participants = attendanceRepository.findByTrainingId(training.getId())
+                .stream()
+                .filter(a -> !"CANCELLED".equals(a.getStatus()))
+                .count();
 
         return TrainingResponse.builder()
                 .id(training.getId())
@@ -227,5 +294,4 @@ public class TrainingService {
                 .coachId(training.getCoachId())
                 .build();
     }
-
 }
