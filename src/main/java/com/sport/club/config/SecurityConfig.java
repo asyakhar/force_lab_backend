@@ -39,7 +39,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/trainings/upcoming").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/api/trainings/upcoming").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/trainings/active-for-marking").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/trainings/completed").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/trainings/all").permitAll()
+                        .requestMatchers("/api/trainings/my-with-status").authenticated()
+                        .requestMatchers("/api/sse/subscribe").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
                         .anyRequest().authenticated()
                 )

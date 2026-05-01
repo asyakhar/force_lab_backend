@@ -24,6 +24,7 @@ public class TrainingController {
     private final TrainingService trainingService;
     private final UserRepository userRepository;
     private final AthleteService athleteService;
+
     @GetMapping("/upcoming")
     public ResponseEntity<List<TrainingResponse>> getUpcomingTrainings() {
         return ResponseEntity.ok(trainingService.getUpcomingTrainings());
@@ -117,6 +118,7 @@ public class TrainingController {
                     .body(Map.of("message", e.getMessage()));
         }
     }
+
     @GetMapping("/my")
     public ResponseEntity<?> getMyTrainings(Authentication authentication) {
         try {
@@ -135,7 +137,7 @@ public class TrainingController {
             }
 
             List<TrainingResponse> trainings = trainingService.getAthleteTrainings(athleteId);
-           // System.out.println("🔍 Найдено тренировок: " + trainings.size()); // ЛОГ
+            // System.out.println("🔍 Найдено тренировок: " + trainings.size()); // ЛОГ
             return ResponseEntity.ok(trainings);
         } catch (Exception e) {
             System.err.println("❌ Ошибка: " + e.getMessage()); // ЛОГ
@@ -143,6 +145,7 @@ public class TrainingController {
                     .body(Map.of("message", e.getMessage()));
         }
     }
+
     @PutMapping("/{trainingId}/attendance/{athleteId}")
     public ResponseEntity<?> markAttendance(
             @PathVariable UUID trainingId,
@@ -157,8 +160,42 @@ public class TrainingController {
                     .body(Map.of("message", e.getMessage()));
         }
     }
+
     private UUID getUserId(Authentication authentication) {
         String email = authentication.getName();
         return trainingService.getUserIdByEmail(email);
+    }
+
+    // Активные (можно отметить — прошли, но не прошло 24 часа)
+    @GetMapping("/active-for-marking")
+    public ResponseEntity<List<TrainingResponse>> getActiveForMarking() {
+        return ResponseEntity.ok(trainingService.getActiveForMarking());
+    }
+
+    // Завершенные (прошло больше 24 часов)
+    @GetMapping("/completed")
+    public ResponseEntity<List<TrainingResponse>> getCompletedTrainings() {
+        return ResponseEntity.ok(trainingService.getCompletedTrainings());
+    }
+
+    @GetMapping("/my-with-status")
+    public ResponseEntity<?> getMyTrainingsWithStatus(Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+            UUID athleteId;
+            try {
+                athleteId = athleteService.getAthleteIdByUserId(user.getId());
+            } catch (Exception e) {
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            List<Map<String, Object>> trainings = trainingService.getAthleteTrainingsWithStatus(athleteId);
+            return ResponseEntity.ok(trainings);
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
     }
 }

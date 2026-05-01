@@ -3,6 +3,7 @@ package com.sport.club.service;
 import com.sport.club.model.dto.response.AchievementResponse;
 import com.sport.club.model.entity.Achievement;
 import com.sport.club.model.entity.AthleteAchievement;
+import com.sport.club.model.entity.TrainingAttendance;
 import com.sport.club.repository.AchievementRepository;
 import com.sport.club.repository.AthleteAchievementRepository;
 import com.sport.club.repository.TrainingAttendanceRepository;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -24,6 +26,7 @@ public class AchievementService {
     private final AthleteAchievementRepository athleteAchievementRepository;
     private final TrainingAttendanceRepository attendanceRepository;
     private final PersonalRecordRepository personalRecordRepository;
+
 
     @Transactional(readOnly = true)
     public List<AchievementResponse> getAthleteAchievements(UUID athleteId) {
@@ -54,10 +57,17 @@ public class AchievementService {
                 .collect(Collectors.toList());
     }
 
+
     @Transactional
     public void checkAndAwardAchievements(UUID athleteId) {
-        // Проверка достижений за посещаемость
-        long attendanceCount = attendanceRepository.countByTrainingIdAndStatus(athleteId, "PRESENT");
+        List<TrainingAttendance> attendances = attendanceRepository.findByAthleteId(athleteId);
+
+        long attendanceCount = attendances.stream()
+                .filter(a -> "ATTENDED".equals(a.getStatus()) || "LATE".equals(a.getStatus()))
+                .count();
+
+        System.out.println("Проверка достижений для спортсмена " + athleteId + ": " + attendanceCount + " посещений");
+
         checkAttendanceAchievements(athleteId, (int) attendanceCount);
 
         // Проверка достижений за рекорды
@@ -69,22 +79,28 @@ public class AchievementService {
         List<Achievement> attendanceAchievements = achievementRepository.findByType(Achievement.AchievementType.ATTENDANCE);
 
         for (Achievement achievement : attendanceAchievements) {
-            if (!athleteAchievementRepository.existsByAthleteIdAndAchievementId(athleteId, achievement.getId())) {
-                AthleteAchievement athleteAchievement = new AthleteAchievement();
+            Optional<AthleteAchievement> existing = athleteAchievementRepository
+                    .findByAthleteIdAndAchievementId(athleteId, achievement.getId());
+
+            AthleteAchievement athleteAchievement;
+            if (existing.isPresent()) {
+                athleteAchievement = existing.get();
+            } else {
+                athleteAchievement = new AthleteAchievement();
                 athleteAchievement.setAthleteId(athleteId);
                 athleteAchievement.setAchievementId(achievement.getId());
-                athleteAchievement.setProgress(count);
-
-                if (count >= achievement.getRequirementCount()) {
-                    athleteAchievement.setCompleted(true);
-                    athleteAchievement.setEarnedAt(LocalDateTime.now());
-                }
-
-                athleteAchievementRepository.save(athleteAchievement);
             }
+
+            athleteAchievement.setProgress(count);
+
+            if (count >= achievement.getRequirementCount()) {
+                athleteAchievement.setCompleted(true);
+                athleteAchievement.setEarnedAt(LocalDateTime.now());
+            }
+
+            athleteAchievementRepository.save(athleteAchievement);
         }
     }
-
     private void checkRecordAchievements(UUID athleteId, int count) {
         List<Achievement> recordAchievements = achievementRepository.findByType(Achievement.AchievementType.RECORD);
 
