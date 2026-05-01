@@ -28,7 +28,6 @@ public class RefreshTokenService {
             return null;
         }
 
-        // Проверка на истечение срока действия
         if (tokenInfo.getExpiresAt().isBefore(LocalDateTime.now())) {
             refreshTokenStorage.remove(token);
             return null;
@@ -41,7 +40,6 @@ public class RefreshTokenService {
         refreshTokenStorage.remove(token);
     }
 
-    // Вспомогательный класс для хранения информации о токене
     private static class TokenInfo {
         private final String email;
         private final LocalDateTime expiresAt;

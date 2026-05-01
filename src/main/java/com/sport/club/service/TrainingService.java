@@ -52,7 +52,7 @@ public class TrainingService {
 
         Training saved = trainingRepository.save(training);
 
-        // ← ДОБАВИТЬ: Уведомляем всех о новой тренировке
+
         sseController.sendEventToAll("training-updated",
                 Map.of("message", "Создана новая тренировка: " + saved.getTitle()));
 
@@ -77,7 +77,7 @@ public class TrainingService {
                 attendance.setMarkedAt(LocalDateTime.now());
                 attendanceRepository.save(attendance);
 
-                // SSE уведомление
+
                 sseController.sendEventToAll("training-updated",
                         Map.of("message", "Участник перезаписался"));
                 return;
@@ -102,7 +102,7 @@ public class TrainingService {
         if (training.getCoachId() != null) {
             athlete.setCoachId(training.getCoachId());
             athleteRepository.save(athlete);
-            System.out.println("✅ Спортсмен " + athlete.getUser().getFullName() + " привязан к тренеру");
+            System.out.println("Спортсмен " + athlete.getUser().getFullName() + " привязан к тренеру");
         }
 
         TrainingAttendance attendance = new TrainingAttendance();
@@ -113,7 +113,7 @@ public class TrainingService {
 
         attendanceRepository.save(attendance);
 
-        // ← ДОБАВИТЬ: Уведомления
+
         sseController.sendEventToAll("training-updated",
                 Map.of("message", "Обновление участников"));
         sseController.sendEvent(training.getCoachId().toString(), "participant-added",
@@ -135,11 +135,11 @@ public class TrainingService {
         attendance.setStatus("CANCELLED");
         attendanceRepository.save(attendance);
 
-        // ← ДОБАВИТЬ: Уведомления
+
         sseController.sendEventToAll("training-updated",
                 Map.of("message", "Участник отменил запись"));
     }
-    // Активные для отметки: прошли, но не прошло 24 часа
+
     public List<TrainingResponse> getActiveForMarking() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime twentyFourHoursAgo = now.minusHours(24);
@@ -152,7 +152,7 @@ public class TrainingService {
                 .collect(Collectors.toList());
     }
 
-    // Завершенные: прошло больше 24 часов
+
     public List<TrainingResponse> getCompletedTrainings() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime twentyFourHoursAgo = now.minusHours(24);
@@ -189,7 +189,7 @@ public class TrainingService {
             System.out.println("Ошибка обновления достижений: " + e.getMessage());
         }
 
-        // Уведомления
+
         sseController.sendEvent(athleteId.toString(), "attendance-marked",
                 Map.of("status", status, "message", "Тренер отметил ваше посещение: " + status));
         sseController.sendEventToAll("training-updated",
@@ -213,7 +213,7 @@ public class TrainingService {
                     result.put("location", training.getLocation());
                     result.put("sportType", training.getSportType());
                     result.put("coachName", getCoachName(training.getCoachId()));
-                    result.put("status", attendance.getStatus()); // ← СТАТУС ПОСЕЩЕНИЯ
+                    result.put("status", attendance.getStatus());
                     result.put("maxParticipants", training.getMaxParticipants());
 
                     return result;
@@ -272,7 +272,7 @@ public class TrainingService {
 
         Training saved = trainingRepository.save(training);
 
-        // ← ДОБАВИТЬ
+
         sseController.sendEventToAll("training-updated",
                 Map.of("message", "Тренировка обновлена: " + saved.getTitle()));
 
@@ -292,7 +292,7 @@ public class TrainingService {
         attendanceRepository.deleteAll(attendances);
         trainingRepository.delete(training);
 
-        // ← ДОБАВИТЬ
+
         sseController.sendEventToAll("training-updated",
                 Map.of("message", "Тренировка удалена"));
     }

@@ -49,7 +49,7 @@ public class JwtService {
             final String email = extractEmail(token);
             return (email.equals(userEmail)) && !isTokenExpired(token);
         } catch (ExpiredJwtException e) {
-            // Токен истек - возвращаем false вместо исключения
+
             return false;
         } catch (Exception e) {
             return false;

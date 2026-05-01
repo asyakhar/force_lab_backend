@@ -51,14 +51,14 @@ public class ProfileController {
         profile.put("role", "COACH");
         profile.put("createdAt", user.getCreatedAt());
 
-        // Статистика тренера
+
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalAthletes", 0); // Можно добавить реальный подсчет
+        stats.put("totalAthletes", 0);
         stats.put("totalTrainings", 0);
         stats.put("rating", 0.0);
         profile.put("stats", stats);
 
-        // Специализации (можно добавить в сущность User)
+
         List<String> specializations = Arrays.asList("ОФП", "Силовая подготовка");
         profile.put("specializations", specializations);
 
@@ -78,7 +78,7 @@ public class ProfileController {
             AthleteProfileResponse athleteProfile = athleteService.getProfileByEmail(user.getEmail());
             profile.put("athleteInfo", athleteProfile);
 
-            // Статистика спортсмена
+
             Map<String, Object> stats = new LinkedHashMap<>();
             stats.put("totalTrainings", 0);
             stats.put("totalRecords", 0);

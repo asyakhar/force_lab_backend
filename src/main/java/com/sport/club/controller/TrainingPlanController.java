@@ -24,7 +24,7 @@ public class TrainingPlanController {
             @RequestBody CreateTrainingPlanRequest request,
             Authentication authentication) {
         String email = authentication.getName();
-        UUID coachId = UUID.randomUUID(); // Упрощенно
+        UUID coachId = UUID.randomUUID();
         return ResponseEntity.ok(trainingPlanService.createPlan(request, coachId));
     }
 

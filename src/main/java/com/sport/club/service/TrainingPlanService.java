@@ -45,7 +45,7 @@ public class TrainingPlanService {
 
         TrainingPlan savedPlan = planRepository.save(plan);
 
-        // Создаем элементы плана
+
         if (request.getItems() != null) {
             for (CreateTrainingPlanRequest.PlanItemRequest itemRequest : request.getItems()) {
                 TrainingPlanItem item = new TrainingPlanItem();
@@ -104,7 +104,7 @@ public class TrainingPlanService {
 
         itemRepository.save(item);
 
-        // Проверяем, все ли элементы плана выполнены
+
         long totalItems = itemRepository.countByPlanIdAndCompleted(item.getPlanId(), true);
         long allItems = itemRepository.countByPlanIdAndCompleted(item.getPlanId(), false) + totalItems;
 

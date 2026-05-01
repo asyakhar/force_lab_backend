@@ -14,16 +14,16 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @CrossOrigin
 public class SseController {
 
-    // Храним эмиттеры для каждого пользователя
+
     private final Map<String, CopyOnWriteArrayList<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
 
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe(@RequestParam String userId) {
-        SseEmitter emitter = new SseEmitter(0L); // Бесконечный таймаут
+        SseEmitter emitter = new SseEmitter(0L);
 
         userEmitters.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
 
-        // Отправляем первое событие
+
         try {
             emitter.send(SseEmitter.event().name("connected").data("Подключено"));
         } catch (IOException e) {
@@ -37,7 +37,7 @@ public class SseController {
         return emitter;
     }
 
-    // Отправить событие конкретному пользователю
+
     public void sendEvent(String userId, String eventName, Object data) {
         CopyOnWriteArrayList<SseEmitter> emitters = userEmitters.get(userId);
         if (emitters != null) {
@@ -51,7 +51,7 @@ public class SseController {
         }
     }
 
-    // Отправить всем
+
     public void sendEventToAll(String eventName, Object data) {
         userEmitters.forEach((userId, emitters) -> {
             sendEvent(userId, eventName, data);

@@ -35,11 +35,11 @@ public class CoachController {
             User coach = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Тренер не найден"));
 
-            System.out.println("🔍 Тренер: " + coach.getFullName() + " (ID: " + coach.getId() + ")");
+            System.out.println("Тренер: " + coach.getFullName() + " (ID: " + coach.getId() + ")");
 
-            // Получаем спортсменов по coachId
+
             List<Athlete> myAthletes = athleteRepository.findByCoachId(coach.getId());
-            System.out.println("📊 Найдено спортсменов: " + myAthletes.size());
+            System.out.println("Найдено спортсменов: " + myAthletes.size());
 
             List<Map<String, Object>> athletesList = new ArrayList<>();
 
@@ -56,24 +56,24 @@ public class CoachController {
                 athleteData.put("status", athlete.getActive() ? "ACTIVE" : "INACTIVE");
 
                 athletesList.add(athleteData);
-                System.out.println("✅ " + athleteUser.getFullName() + " - " + athlete.getSportType());
+                System.out.println(" " + athleteUser.getFullName() + " - " + athlete.getSportType());
             }
 
             return ResponseEntity.ok(athletesList);
         } catch (Exception e) {
-            System.err.println("❌ Ошибка: " + e.getMessage());
+            System.err.println("Ошибка: " + e.getMessage());
             return ResponseEntity.status(400)
                     .body(Map.of("message", e.getMessage()));
         }
     }
-    // Получить прогресс конкретного спортсмена
+
     @GetMapping("/athletes/{athleteId}/progress")
     public ResponseEntity<?> getAthleteProgress(@PathVariable UUID athleteId) {
         try {
-            // Получаем статистику спортсмена
+
             Map<String, Object> progress = new LinkedHashMap<>();
 
-            // Здесь можно добавить реальную статистику
+
             AthleteProfileResponse profile = athleteService.getProfileById(athleteId);
             progress.put("profile", profile);
             progress.put("totalTrainings", 0);
@@ -87,7 +87,7 @@ public class CoachController {
         }
     }
 
-    // Назначить план тренировки спортсмену
+
     @PostMapping("/athletes/{athleteId}/plans")
     public ResponseEntity<?> assignPlanToAthlete(
             @PathVariable UUID athleteId,
@@ -98,7 +98,7 @@ public class CoachController {
             User coach = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Тренер не найден"));
 
-            // Создаем план для спортсмена
+
             Map<String, Object> request = new LinkedHashMap<>();
             request.put("name", planData.get("name"));
             request.put("description", planData.get("description"));
@@ -109,8 +109,8 @@ public class CoachController {
             request.put("endDate", planData.get("endDate"));
             request.put("isTemplate", false);
 
-            // Здесь должен быть вызов создания плана
-            // trainingPlanService.createPlan(...)
+
+
 
             return ResponseEntity.ok(Map.of("message", "План назначен"));
         } catch (Exception e) {
@@ -119,7 +119,7 @@ public class CoachController {
         }
     }
 
-    // Получить статистику тренера
+
     @GetMapping("/stats")
     public ResponseEntity<?> getCoachStats(Authentication authentication) {
         try {

@@ -47,7 +47,7 @@ public class TrainingController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-        // Передаем userId, а не athleteId
+
         trainingService.registerForTraining(trainingId, user.getId());
         return ResponseEntity.ok("Успешно зарегистрированы на тренировку");
     }
@@ -64,7 +64,7 @@ public class TrainingController {
         return ResponseEntity.ok("Регистрация отменена");
     }
 
-    // Обновить тренировку
+
     @PutMapping("/{trainingId}")
     public ResponseEntity<?> updateTraining(
             @PathVariable UUID trainingId,
@@ -80,7 +80,7 @@ public class TrainingController {
         }
     }
 
-    // Удалить тренировку
+
     @DeleteMapping("/{trainingId}")
     public ResponseEntity<?> deleteTraining(
             @PathVariable UUID trainingId,
@@ -95,7 +95,7 @@ public class TrainingController {
         }
     }
 
-    // Получить детальную информацию о тренировке
+
     @GetMapping("/{trainingId}/details")
     public ResponseEntity<?> getTrainingDetails(@PathVariable UUID trainingId) {
         try {
@@ -107,7 +107,7 @@ public class TrainingController {
         }
     }
 
-    // Получить список записавшихся спортсменов
+
     @GetMapping("/{trainingId}/participants")
     public ResponseEntity<?> getTrainingParticipants(@PathVariable UUID trainingId) {
         try {
@@ -126,7 +126,7 @@ public class TrainingController {
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-            // Получаем athleteId
+
             UUID userId = user.getId();
             UUID athleteId;
 
@@ -137,10 +137,10 @@ public class TrainingController {
             }
 
             List<TrainingResponse> trainings = trainingService.getAthleteTrainings(athleteId);
-            // System.out.println("🔍 Найдено тренировок: " + trainings.size()); // ЛОГ
+
             return ResponseEntity.ok(trainings);
         } catch (Exception e) {
-            System.err.println("❌ Ошибка: " + e.getMessage()); // ЛОГ
+            System.err.println("Ошибка: " + e.getMessage());
             return ResponseEntity.status(400)
                     .body(Map.of("message", e.getMessage()));
         }
@@ -152,7 +152,7 @@ public class TrainingController {
             @PathVariable UUID athleteId,
             @RequestBody Map<String, String> request) {
         try {
-            String status = request.get("status"); // ATTENDED, ABSENT, LATE
+            String status = request.get("status");
             trainingService.markAttendance(trainingId, athleteId, status);
             return ResponseEntity.ok(Map.of("message", "Посещение отмечено"));
         } catch (Exception e) {
@@ -166,13 +166,13 @@ public class TrainingController {
         return trainingService.getUserIdByEmail(email);
     }
 
-    // Активные (можно отметить — прошли, но не прошло 24 часа)
+
     @GetMapping("/active-for-marking")
     public ResponseEntity<List<TrainingResponse>> getActiveForMarking() {
         return ResponseEntity.ok(trainingService.getActiveForMarking());
     }
 
-    // Завершенные (прошло больше 24 часов)
+
     @GetMapping("/completed")
     public ResponseEntity<List<TrainingResponse>> getCompletedTrainings() {
         return ResponseEntity.ok(trainingService.getCompletedTrainings());

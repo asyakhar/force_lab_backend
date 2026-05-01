@@ -31,16 +31,16 @@ public class ProgressService {
         List<PersonalRecord> allRecords = personalRecordRepository
                 .findByAthleteIdOrderByAchievedDateDesc(athleteId);
 
-        // Получаем все записи о посещении тренировок
+
         List<TrainingAttendance> attendances = attendanceRepository.findByAthleteId(athleteId);
 
-        // Вычисляем реальные показатели
+
         int totalTrainings = attendances.size();
         int currentStreak = calculateCurrentStreak(attendances);
         int longestStreak = calculateLongestStreak(attendances);
         double attendanceRate = calculateAttendanceRate(attendances);
 
-        // Группируем рекорды по упражнениям для графиков
+
         Map<String, List<ProgressStatsResponse.ProgressDataPoint>> progressByExercise = new HashMap<>();
 
         if (allRecords != null && !allRecords.isEmpty()) {
@@ -99,10 +99,10 @@ public class ProgressService {
      */
     private double calculateAttendanceRate(List<TrainingAttendance> attendances) {
         if (attendances == null || attendances.isEmpty()) {
-            return 0.0; // Нет тренировок - посещаемость 0%
+            return 0.0;
         }
 
-        // Считаем все тренировки, на которые был записан спортсмен
+
         long totalRegistered = attendances.size();
 
         long attended = attendances.stream()
@@ -113,7 +113,7 @@ public class ProgressService {
             return 0.0;
         }
 
-        // Вычисляем процент
+
         return (double) attended / totalRegistered * 100.0;
     }
 
@@ -122,14 +122,14 @@ public class ProgressService {
      */
     private int calculateCurrentStreak(List<TrainingAttendance> attendances) {
         if (attendances == null || attendances.isEmpty()) {
-            return 0; // Нет тренировок - стрик 0
+            return 0;
         }
 
-        // Получаем только посещенные тренировки
+
         Set<LocalDate> attendedDates = attendances.stream()
                 .filter(a -> "ATTENDED".equals(a.getStatus()) || "LATE".equals(a.getStatus()))
                 .map(a -> {
-                    // Получаем дату тренировки из Training
+
                     Optional<Training> training = trainingRepository.findById(a.getTrainingId());
                     return training.map(t -> t.getTrainingDate().toLocalDate()).orElse(null);
                 })
@@ -144,17 +144,17 @@ public class ProgressService {
         LocalDate today = LocalDate.now();
         LocalDate yesterday = today.minusDays(1);
 
-        // Проверяем, была ли тренировка сегодня или вчера
+
         LocalDate lastTrainingDate = attendedDates.iterator().next();
         if (!lastTrainingDate.equals(today) && !lastTrainingDate.equals(yesterday)) {
-            return 0; // Стрик прерван
+            return 0;
         }
 
         int streak = 1;
         LocalDate currentDate = lastTrainingDate;
 
         for (LocalDate date : attendedDates) {
-            if (date.equals(lastTrainingDate)) continue; // Пропускаем первую дату
+            if (date.equals(lastTrainingDate)) continue;
 
             if (ChronoUnit.DAYS.between(date, currentDate) == 1) {
                 streak++;
@@ -175,7 +175,7 @@ public class ProgressService {
             return 0;
         }
 
-        // Получаем только посещенные тренировки, отсортированные по дате
+
         List<LocalDate> attendedDates = attendances.stream()
                 .filter(a -> "ATTENDED".equals(a.getStatus()) || "LATE".equals(a.getStatus()))
                 .map(a -> {
@@ -207,7 +207,7 @@ public class ProgressService {
     }
 
     private PersonalRecordResponse mapToRecordResponse(PersonalRecord record) {
-        // Определяем, является ли этот рекорд лучшим
+
         List<PersonalRecord> allRecords = personalRecordRepository
                 .findByAthleteIdAndExerciseName(record.getAthleteId(), record.getExerciseName());
 

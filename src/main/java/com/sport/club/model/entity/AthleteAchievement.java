@@ -25,7 +25,7 @@ public class AthleteAchievement {
     private LocalDateTime earnedAt;
 
     @Column(name = "progress")
-    private Integer progress; // Текущий прогресс (для отслеживаемых достижений)
+    private Integer progress;
 
     @Column(name = "completed")
     private Boolean completed = false;
